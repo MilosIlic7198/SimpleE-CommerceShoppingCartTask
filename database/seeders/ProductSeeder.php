@@ -12,7 +12,7 @@ class ProductSeeder extends Seeder
      * Run the database seeds.
      */
 
-    public function run()
+    public function run(): void
     {
         Product::create(['name' => 'Laptop', 'description' => 'High-end laptop', 'price' => 1299.99, 'stock_quantity' => 10]);
         Product::create(['name' => 'Mouse', 'description' => 'Wireless mouse', 'price' => 29.99, 'stock_quantity' => 50]);

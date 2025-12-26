@@ -19,6 +19,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     Route::get('/products', [ProductController::class, 'index'])->name('productsIndex');
+    Route::put('/products', [ProductController::class, 'checkout'])->name('checkoutProducts');
+
     Route::get('/cart', [CartController::class, 'index'])->name('cartIndex');
 
     Route::post('/cart/{product}', [CartController::class, 'store'])->name('storeCart');
