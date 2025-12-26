@@ -56,7 +56,7 @@ class SendDailyOrdersJob implements ShouldQueue
                 . "\n\nReport generated at: " . now()->format('Y-m-d H:i:s');
         }
         $subject = 'Last Evening Orders Report - ' . now()->format('H:i:s');
-        $admin = User::where('is_admin', true)->first();
+        $admin = User::where('is_admin', true)->firstOrFail();
         Mail::to($admin->email)->send(new DailyOrdersMail($body, $subject));
     }
 }

@@ -4,63 +4,53 @@ namespace App\Http\Controllers;
 
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Services\CartService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\UpdateCartItemRequest;
 use Inertia\Inertia;
 
 class CartController extends Controller
 {
+    protected CartService $cartService;
+
+    public function __construct(CartService $cartService)
+    {
+        $this->cartService = $cartService;
+    }
+
     public function index()
     {
-        // Fetch the cart products that the user already has in their cart
-        $cartItems = Auth::user()
-            ->cartItems()
-            ->select('id', 'product_id', 'quantity')
-            ->with('product')
-            ->get();
-        // Pass cart products to the frontend
         return Inertia::render('cart/Index', [
-            'cartItems' => $cartItems,
+            'cartItems' => $this->cartService->getUserCartItems(),
         ]);
     }
 
-    public function store(Request $request, Product $product)
+    public function store(Product $product)
     {
-        // Ensure that the user hasn't already added the product to the cart
-        $existingCartItem = CartItem::where('user_id', Auth::id())
-            ->where('product_id', $product->id)
-            ->first();
+        $this->cartService->addProduct($product);
 
-        if ($existingCartItem) {
-            // If the product already exists in the cart, simply return
-            return;
-        }
-
-        // If not in cart, create a new cart item
-        $cartItem = CartItem::create([
-            'user_id' => Auth::id(),
-            'product_id' => $product->id,
-            'quantity' => 1,  // Add 1 quantity by default
-        ]);
+        return redirect()
+            ->route('productsIndex')
+            ->with('success', 'All good!');
     }
 
-
-    public function update(Request $request, CartItem $cartItem)
+    public function update(UpdateCartItemRequest $request, CartItem $cartItem)
     {
-        $request->validate(['quantity' => 'required|integer|min:1']);
-
-        if ($cartItem->product->stock_quantity < $request->quantity) {
-            // No more in stock
-            return;
+        try {
+            $this->cartService->updateQuantity(
+                $cartItem,
+                $request->validated()['quantity']
+            );
+        } catch (\Exception $e) {
+        return redirect()
+            ->route('cartIndex')
+            ->with('error', $e->getMessage());
         }
-
-        $cartItem->update(['quantity' => $request->quantity]);
     }
 
     public function destroy(CartItem $cartItem)
     {
-        $cartItem->delete();
+        $this->cartService->remove($cartItem);
     }
-
 }
 

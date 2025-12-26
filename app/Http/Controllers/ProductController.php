@@ -3,86 +3,64 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\CartItem;
-use App\Models\Order;
+use App\Services\CartService;
+use App\Services\OrderService;
 use Illuminate\Http\Request;
 use App\Http\Requests\CheckoutProductsRequest;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection;
 use App\Jobs\SendLowStockJob;
 use Inertia\Inertia;
 
 class ProductController extends Controller
 {
+    protected $cartService;
+    protected $orderService;
+
+    public function __construct(CartService $cartService, OrderService $orderService)
+    {
+        $this->cartService = $cartService;
+        $this->orderService = $orderService;
+    }
+
+    /**
+     * Display a listing of products and user's cart items.
+     */
     public function index()
     {
-        // Fetch all products
         $products = Product::all();
+        $cartProductIds = $this->cartService->getUserCartItemsIds();
 
-        // Fetch the product IDs that the user already has in their cart
-        $cartProducts = Auth::user()->cartItems()->pluck('product_id')->toArray();
-
-        // Pass products and cart product IDs to the frontend
         return Inertia::render('products/Index', [
             'products' => $products,
-            'cartProducts' => $cartProducts,  // Send only the product IDs
+            'cartProducts' => $cartProductIds,
         ]);
     }
 
+    /**
+     * Checkout the user's cart items.
+     */
     public function checkout(CheckoutProductsRequest $request)
     {
-        $products = $request->validated()['products'];
-
-        $user = Auth::user();
-
-        $cartItems = CartItem::with('product')
-            ->where('user_id', $user->id)
-            ->get();
-
-        if ($cartItems->isEmpty()) {
-            return;
+        $cartItems = $this->cartService->getUserCartItems();
+        if($cartItems->isEmpty()) {
+            return redirect()->route('cartIndex')
+                             ->with('error', 'Not good! Cart is empty!');
         }
 
-        // Threshold for low stock
-        $lowStockThreshold = 3;
-        $lowStockProducts = [];
+        try {
+            $lowStockProducts = $this->orderService->checkout($cartItems);
+            $this->cartService->clearUserCart();
+        } catch (\Exception $e) {
+            return redirect()->route('cartIndex')
+                             ->with('error', $e->getMessage());
+        }
 
-        DB::transaction(function () use ($cartItems, $lowStockThreshold, &$lowStockProducts) {
-            foreach ($cartItems as $item) {
-                $product = $item->product;
-
-                if ($product->stock_quantity < $item->quantity) {
-                    throw new \Exception("Not enough stock for {$product->name}");
-                }
-
-                Order::create([
-                    'user_id' => Auth::id(),
-                    'product_id' => $product->id,
-                    'quantity' => $item->quantity,
-                    'price_at_purchase' => $product->price,
-                    'total' => $item->quantity * $product->price,
-                ]);
-
-                $product->decrement('stock_quantity', $item->quantity);
-
-                // Reload product to get updated stock
-                $product->refresh();
-
-                // Check if stock is below threshold
-                if ($product->stock_quantity < $lowStockThreshold) {
-                    $lowStockProducts[] = $product;
-                }
-            }
-
-            CartItem::where('user_id', auth()->id())->delete();
-        });
-
-        // Dispatch email job after transaction only if there are low stock products
+        // Dispatch low stock notifications after transaction
         if (!empty($lowStockProducts)) {
             SendLowStockJob::dispatch(collect($lowStockProducts));
         }
-    }
 
+        return redirect()->route('cartIndex')
+                         ->with('success', 'All good!');
+    }
 }
 
