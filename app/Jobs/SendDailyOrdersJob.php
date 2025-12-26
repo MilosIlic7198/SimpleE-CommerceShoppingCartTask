@@ -4,12 +4,13 @@ namespace App\Jobs;
 
 use App\Models\User;
 use App\Models\Order;
+use App\Mail\DailyOrdersMail;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 
-class SendDailyOrdersMail implements ShouldQueue
+class SendDailyOrdersJob implements ShouldQueue
 {
     use Queueable;
 
@@ -54,12 +55,9 @@ class SendDailyOrdersMail implements ShouldQueue
                 . $lines->join("\n")
                 . "\n\nReport generated at: " . now()->format('Y-m-d H:i:s');
         }
-
+        $subject = 'Last Evening Orders Report - ' . now()->format('H:i:s');
         $admin = User::where('is_admin', true)->first();
-        Mail::raw($body, function ($message) use($admin) {
-            $message->to($admin->email)
-                    ->subject('Last Evening Orders Report - ' . now()->format('H:i:s'));
-        });
+        Mail::to($admin->email)->send(new DailyOrdersMail($body, $subject));
     }
 }
 

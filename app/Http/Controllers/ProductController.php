@@ -10,7 +10,7 @@ use App\Http\Requests\CheckoutProductsRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
-use App\Jobs\SendLowStockMail;
+use App\Jobs\SendLowStockJob;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -78,8 +78,10 @@ class ProductController extends Controller
             CartItem::where('user_id', auth()->id())->delete();
         });
 
-        // Dispatch email job after transaction
-        SendLowStockMail::dispatch(collect($lowStockProducts));
+        // Dispatch email job after transaction only if there are low stock products
+        if (!empty($lowStockProducts)) {
+            SendLowStockJob::dispatch(collect($lowStockProducts));
+        }
     }
 
 }
