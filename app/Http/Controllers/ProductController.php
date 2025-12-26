@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\CartItem;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use App\Http\Requests\CheckoutProductsRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
-use App\Jobs\SendLowStockNotification;
+use App\Jobs\SendLowStockMail;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -55,6 +56,14 @@ class ProductController extends Controller
                     throw new \Exception("Not enough stock for {$product->name}");
                 }
 
+                Order::create([
+                    'user_id' => Auth::id(),
+                    'product_id' => $product->id,
+                    'quantity' => $item->quantity,
+                    'price_at_purchase' => $product->price,
+                    'total' => $item->quantity * $product->price,
+                ]);
+
                 $product->decrement('stock_quantity', $item->quantity);
 
                 // Reload product to get updated stock
@@ -70,7 +79,7 @@ class ProductController extends Controller
         });
 
         // Dispatch email job after transaction
-        SendLowStockNotification::dispatch(collect($lowStockProducts));
+        SendLowStockMail::dispatch(collect($lowStockProducts));
     }
 
 }

@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Collection;
 
-class SendLowStockNotification implements ShouldQueue
+class SendLowStockMail implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -35,6 +35,5 @@ class SendLowStockNotification implements ShouldQueue
                 }
             );
         }
-
 }
 
