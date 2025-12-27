@@ -30,6 +30,7 @@ You can copy from the `.env.example` file using:
 
 ```bash
 cp .env.example .env
+```
 
 ### Mailtrap Configuration
 
@@ -47,7 +48,6 @@ MAIL_ENCRYPTION=tls
 You can copy from the `.env.example` file using:
 ```bash
 cp .env.example .env
-```
 ```
 
 ### Also in `config/mail.php`
@@ -129,13 +129,15 @@ php artisan serve
 ```bash
 # Run worker
 php artisan queue:work
+```
 
 11. **To start the scheduler!**
 
+```bash
 # Start scheduler
 php artisan schedule:work
+```
 
-*Note: There is a possibility that the scheduler or the queue job may crash. This could happen because Mailtrap has a rate limit on how many emails can be sent per second.*
+_Note: There is a possibility that the scheduler or the queue job crash. This could happen because Mailtrap has a rate limit on how many emails can be sent per second._
 
 **Enjoy! 😃**
-
